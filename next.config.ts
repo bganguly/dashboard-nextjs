@@ -1,7 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${process.env.SPRING_API_URL ?? "http://localhost:8080"}/api/:path*`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
