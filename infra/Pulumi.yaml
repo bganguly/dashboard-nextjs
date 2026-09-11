@@ -1,0 +1,3 @@
+name: dashboard-nextjs
+runtime: nodejs
+description: Dashboard Next.js Cloud Run service
