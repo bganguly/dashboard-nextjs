@@ -123,6 +123,7 @@ export default function Chart({
     const from = filters?.from || defaultRange().from;
     const to = filters?.to || defaultRange().to;
     setRange({ from, to });
+    lastRequestKeyRef.current = null;
     fetchAggregates(from, to);
   }, [fetchAggregates, filters?.from, filters?.to]);
 
