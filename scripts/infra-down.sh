@@ -83,13 +83,6 @@ if (( _CHAINED == 0 )); then
   [[ -z "$yn" || "$yn" =~ ^[Yy]$ ]] || { printf 'Aborted.\n'; exit 0; }
 fi
 
-cd "$INFRA_DIR"
-npm install --prefer-offline 2>/dev/null || npm install
-
-pulumi stack select "$DEPLOY_MODE"
-pulumi config set gcp:project "$GCP_PROJECT"
-pulumi config set gcp:region  "$GCP_REGION"
-
 _pulumi_destroy_robust() {
   local log_file attempt=0 rc stale_urns
   log_file="$(mktemp)"
@@ -120,7 +113,14 @@ _pulumi_destroy_robust() {
   done
 }
 
-_pulumi_destroy_robust
+(
+  cd "$INFRA_DIR"
+  npm --prefix "$INFRA_DIR" install --prefer-offline 2>/dev/null || npm --prefix "$INFRA_DIR" install
+  pulumi stack select "$DEPLOY_MODE"
+  pulumi config set gcp:project "$GCP_PROJECT"
+  pulumi config set gcp:region  "$GCP_REGION"
+  _pulumi_destroy_robust
+)
 
 rm -f "$ENV_FILE"
 printf '\n[infra-down] Next.js GCP %s resources destroyed.\n' "$DEPLOY_MODE"
