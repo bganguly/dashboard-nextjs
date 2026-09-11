@@ -169,7 +169,7 @@ _cloudbuild_submit() {
   fi
   local cache_tag tmpyaml
   cache_tag="${tag%:*}:cache"
-  tmpyaml=$(mktemp /private/tmp/claude-501/-Users-bikram-Personal-interview-prep-grouped-projects-llm-implementations/b97debc2-4f44-439b-a2d6-9311c874335e/scratchpad/cloudbuild.XXXXXX.yaml)
+  tmpyaml=$(mktemp /tmp/cloudbuild.XXXXXX)
   cat > "$tmpyaml" <<YAML
 steps:
 - name: 'gcr.io/cloud-builders/docker'
