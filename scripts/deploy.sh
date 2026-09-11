@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INFRA_DIR="$ROOT_DIR/infra"
+cd "$ROOT_DIR"
 
 _STEP="startup"
 _on_exit() { local c=$?; [[ $c -ne 0 ]] && printf '\n[deploy.sh] ABORTED (exit %d) at step: %s\n' "$c" "$_STEP" >&2; }
@@ -18,8 +19,6 @@ DEPLOY_MODE=""
 _local_running=0
 _lite_count=0
 _full_count=0
-_CP=0
-_CF=0
 
 _pulumi_stack_count() {
   local stack="$1"
@@ -50,6 +49,7 @@ _chk() {
     _CF=$(( _CF + 1 ))
   fi
 }
+_CP=0; _CF=0
 
 lsof -ti:3000 >/dev/null 2>&1 && _local_running=1 || true
 if command -v pulumi >/dev/null 2>&1 && pulumi whoami >/dev/null 2>&1; then
@@ -88,16 +88,16 @@ if [[ "$_TARGET" == "local" ]]; then
   command -v node >/dev/null 2>&1 || { printf 'Node.js not found — install Node 20+\n' >&2; exit 1; }
 
   printf '\nInstalling deps...\n'
-  npm --prefix "$ROOT_DIR" install --prefer-offline 2>/dev/null || npm --prefix "$ROOT_DIR" install
+  npm install --prefer-offline 2>/dev/null || npm install
 
   printf '\nFreeing port 3000...\n'
   "$ROOT_DIR/scripts/free-port.sh" 3000
 
   SPRING_API_URL="${SPRING_API_URL:-http://localhost:8080}"
   printf 'Starting Next.js dev server on :3000 (SPRING_API_URL=%s)...\n' "$SPRING_API_URL"
-  printf 'Override: SPRING_API_URL=http://other-host:port %s/scripts/deploy.sh\n\n' "$ROOT_DIR"
+  printf 'Override: SPRING_API_URL=http://other-host:port ./scripts/deploy.sh\n\n'
 
-  SPRING_API_URL="$SPRING_API_URL" npm --prefix "$ROOT_DIR" run dev
+  SPRING_API_URL="$SPRING_API_URL" npm run dev
 
   exit 0
 fi
@@ -136,12 +136,13 @@ GCP_REGION="${cfg_region:-${GCP_REGION:-us-central1}}"
 
 printf 'Auth: %s  Project: %s  Region: %s\n' "$ACTIVE_ACCOUNT" "$GCP_PROJECT" "$GCP_REGION"
 
+# Resolve Spring API URL from the backend's Pulumi output if not set.
 if [[ -z "${SPRING_API_URL:-}" ]]; then
   BACKEND_INFRA_DIR="$(cd "$ROOT_DIR/../springboot-dashboard-backend/infra" 2>/dev/null && pwd || true)"
   if [[ -n "$BACKEND_INFRA_DIR" && -d "$BACKEND_INFRA_DIR" ]] && command -v pulumi >/dev/null 2>&1; then
-    SPRING_API_URL=$( cd "$BACKEND_INFRA_DIR" && \
+    SPRING_API_URL=$(cd "$BACKEND_INFRA_DIR" && \
       pulumi stack select "$DEPLOY_MODE" 2>/dev/null && \
-      pulumi stack output backendUrl 2>/dev/null || true )
+      pulumi stack output backendUrl 2>/dev/null || true)
   fi
 fi
 [[ -n "${SPRING_API_URL:-}" ]] || {
@@ -259,6 +260,7 @@ PYEOF
       fi
       rm -f "$log_file"
       printf '[deploy] pulumi up failed — no importable conflicts.\n' >&2
+      grep -E 'error:|Error|failed|FAIL' "$log_file" 2>/dev/null | head -20 >&2 || true
       return 1
     fi
 
@@ -281,36 +283,30 @@ PYEOF
 
 printf '\n=== deploying via Pulumi ===\n'
 _STEP="pulumi up"
+cd "$INFRA_DIR"
+[[ -d node_modules ]] || npm install --prefer-offline 2>/dev/null || npm install
+pulumi stack select "$DEPLOY_MODE" 2>/dev/null || pulumi stack init "$DEPLOY_MODE"
+pulumi config set gcp:project      "$GCP_PROJECT"
+pulumi config set gcp:region       "$GCP_REGION"
+pulumi config set frontendImage    "$IMAGE"
+pulumi config set springApiUrl     "$SPRING_API_URL"
+if [[ "$DEPLOY_MODE" == "lite" ]]; then
+  pulumi config set namePrefix       "dash-nextjs-lite"
+  pulumi config set minInstanceCount "0"
+  pulumi config set maxInstanceCount "3"
+  pulumi config set cpu              "1"
+  pulumi config set memory           "512Mi"
+else
+  pulumi config set namePrefix       "dash-nextjs-full"
+  pulumi config set minInstanceCount "1"
+  pulumi config set maxInstanceCount "3"
+  pulumi config set cpu              "1"
+  pulumi config set memory           "512Mi"
+fi
+_pulumi_up_robust
 
-_FRONTEND_URL_FILE="$(mktemp)"
-
-(
-  cd "$INFRA_DIR"
-  [[ -d node_modules ]] || npm --prefix "$INFRA_DIR" install --prefer-offline 2>/dev/null || npm --prefix "$INFRA_DIR" install
-  pulumi stack select "$DEPLOY_MODE" 2>/dev/null || pulumi stack init "$DEPLOY_MODE"
-  pulumi config set gcp:project   "$GCP_PROJECT"
-  pulumi config set gcp:region    "$GCP_REGION"
-  pulumi config set frontendImage "$IMAGE"
-  pulumi config set springApiUrl  "$SPRING_API_URL"
-  if [[ "$DEPLOY_MODE" == "lite" ]]; then
-    pulumi config set namePrefix       "dash-nextjs-lite"
-    pulumi config set minInstanceCount "0"
-    pulumi config set maxInstanceCount "3"
-    pulumi config set cpu              "1"
-    pulumi config set memory           "512Mi"
-  else
-    pulumi config set namePrefix       "dash-nextjs-full"
-    pulumi config set minInstanceCount "1"
-    pulumi config set maxInstanceCount "3"
-    pulumi config set cpu              "1"
-    pulumi config set memory           "512Mi"
-  fi
-  _pulumi_up_robust
-  pulumi stack output frontendUrl 2>/dev/null > "$_FRONTEND_URL_FILE" || true
-)
-
-FRONTEND_URL=$(cat "$_FRONTEND_URL_FILE")
-rm -f "$_FRONTEND_URL_FILE"
+FRONTEND_URL=$(pulumi stack output frontendUrl 2>/dev/null || true)
+cd "$ROOT_DIR"
 
 cat > "$ENV_FILE" <<EOF
 GCP_PROJECT=${GCP_PROJECT}
@@ -333,4 +329,4 @@ http2=$(curl -sf -o /dev/null -w "%{http_code}" "${FRONTEND_URL}/api/runtime" --
 printf '\n  Results: %d passed, %d failed\n' "$_CP" "$_CF"
 (( _CF > 0 )) && printf '\n  !! %d CHECK(S) FAILED — review above before presenting\n' "$_CF"
 
-printf '\nRemember to tear down when finished:\n  %s/scripts/infra-down.sh\n' "$ROOT_DIR"
+printf '\nRemember to tear down when finished:\n  ./scripts/infra-down.sh\n'
