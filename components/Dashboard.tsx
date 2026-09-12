@@ -9,6 +9,7 @@ import FilterSidebar, {
   type OrderFilters,
   type RegionOption,
 } from "@/components/FilterSidebar";
+import BackToPortfolio from "@/components/BackToPortfolio";
 
 const SLOW_WAKING_MS = 800;
 
@@ -102,6 +103,7 @@ export default function Dashboard({ initialAggregates }: DashboardProps) {
 
   return (
     <div className="min-h-screen bg-zinc-50 font-sans dark:bg-black">
+      <BackToPortfolio />
       <main className="w-full px-5 py-8">
         <header className="mb-6 flex items-start justify-between gap-4">
           <div>
