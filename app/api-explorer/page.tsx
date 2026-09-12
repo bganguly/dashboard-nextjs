@@ -811,7 +811,6 @@ function BrushCard() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ApiExplorer() {
-  if (typeof window !== "undefined") console.log("[route] api-explorer mounted, path:", window.location.pathname);
   return (
     <div style={{ background:"#0f0f13", minHeight:"100vh" }} className="text-zinc-100 font-sans antialiased">
       <style>{`

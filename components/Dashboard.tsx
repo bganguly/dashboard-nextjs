@@ -30,7 +30,6 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ initialAggregates }: DashboardProps) {
-  if (typeof window !== "undefined") console.log("[route] Dashboard mounted, path:", window.location.pathname);
   const [filters, setFilters] = useState<OrderFilters>(EMPTY_FILTERS);
   const [regionOptions, setRegionOptions] = useState<RegionOption[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
