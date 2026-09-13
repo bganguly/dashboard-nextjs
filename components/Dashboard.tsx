@@ -35,6 +35,7 @@ export default function Dashboard({ initialAggregates }: DashboardProps) {
   const [regionOptions, setRegionOptions] = useState<RegionOption[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [backendRuntime, setBackendRuntime] = useState<string | null>(null);
+  const [typesenseAvailable, setTypesenseAvailable] = useState<boolean | null>(null);
   const [chartTotal, setChartTotal] = useState<number | null>(null);
   const [exactCount, setExactCount] = useState<number | null>(null);
 
@@ -57,10 +58,11 @@ export default function Dashboard({ initialAggregates }: DashboardProps) {
       }, 100);
     }, SLOW_WAKING_MS);
 
-    fetch("/api/runtime")
+    fetch("/api/status")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((d: { runtime: string }) => {
+      .then((d: { runtime: string; typesense: boolean }) => {
         setBackendRuntime(d.runtime);
+        setTypesenseAvailable(d.typesense);
         if (slowTimer.current) { clearTimeout(slowTimer.current); slowTimer.current = null; }
         if (wakeInterval.current) { clearInterval(wakeInterval.current); wakeInterval.current = null; }
         setWakeStatus((s) => (s === "waking" ? "ready" : null));
@@ -116,6 +118,14 @@ export default function Dashboard({ initialAggregates }: DashboardProps) {
                     ? { background:"rgba(16,185,129,0.10)", border:"1px solid rgba(16,185,129,0.25)", color:"#34d399" }
                     : { background:"rgba(251,146,60,0.10)", border:"1px solid rgba(251,146,60,0.25)", color:"#fb923c" }}>
                   backend · {backendRuntime}
+                </span>
+              )}
+              {typesenseAvailable !== null && (
+                <span className="inline-block text-[11px] px-2 py-0.5 rounded-full font-medium"
+                  style={typesenseAvailable
+                    ? { background:"rgba(99,102,241,0.10)", border:"1px solid rgba(99,102,241,0.25)", color:"#818cf8" }
+                    : { background:"rgba(113,113,122,0.10)", border:"1px solid rgba(113,113,122,0.25)", color:"#a1a1aa" }}>
+                  search · {typesenseAvailable ? "typesense" : "postgres"}
                 </span>
               )}
             </div>
