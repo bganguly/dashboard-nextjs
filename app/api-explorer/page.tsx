@@ -295,19 +295,20 @@ function RunBtn({ onClick, loading }: { onClick: () => void; loading: boolean })
   );
 }
 
-function DarkInput({ value, onChange, placeholder, onEnter, type = "text", style }: {
+function DarkInput({ value, onChange, placeholder, onEnter, type = "text", style, disabled }: {
   value: string; onChange: (v: string) => void; placeholder?: string;
-  onEnter?: () => void; type?: string; style?: React.CSSProperties;
+  onEnter?: () => void; type?: string; style?: React.CSSProperties; disabled?: boolean;
 }) {
   return (
-    <input type={type} value={value} placeholder={placeholder}
+    <input type={type} value={value} placeholder={placeholder} disabled={disabled}
       onChange={e => onChange(e.target.value)}
       onKeyDown={e => e.key === "Enter" && onEnter?.()}
       style={{
         ...S.input, borderRadius:8, padding:"6px 12px", fontSize:"0.8rem",
-        fontFamily:"monospace", outline:"none", transition:"border-color 0.15s", ...style,
+        fontFamily:"monospace", outline:"none", transition:"border-color 0.15s",
+        opacity: disabled ? 0.4 : 1, cursor: disabled ? "not-allowed" : undefined, ...style,
       }}
-      onFocus={e => (e.currentTarget.style.borderColor = "rgba(139,92,246,0.5)")}
+      onFocus={e => { if (!disabled) e.currentTarget.style.borderColor = "rgba(139,92,246,0.5)"; }}
       onBlur={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
     />
   );
@@ -336,8 +337,7 @@ function OrdersCard() {
 
   function toggleAllTime(next: boolean) {
     setAllTime(next);
-    setFrom(DATASET_START);
-    setTo(DATASET_END);
+    if (next) { setFrom(DATASET_START); setTo(DATASET_END); }
   }
 
   async function run() {
@@ -374,11 +374,11 @@ function OrdersCard() {
           <div className="flex flex-wrap gap-2">{mono("pageSize","20")} {mono("sort","placedAt")} {mono("dir","desc")}</div>
           <div className="flex items-center gap-2">
             <span className="text-[11px]" style={{ color:"#52525b" }}>from</span>
-            <DarkInput type="date" value={from} onChange={setFrom} style={{ width:150 }} />
+            <DarkInput type="date" value={from} onChange={setFrom} style={{ width:150 }} disabled={allTime} />
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[11px]" style={{ color:"#52525b" }}>to</span>
-            <DarkInput type="date" value={to} onChange={setTo} style={{ width:150 }} />
+            <DarkInput type="date" value={to} onChange={setTo} style={{ width:150 }} disabled={allTime} />
           </div>
           <label className="flex items-center gap-1.5 text-[11px] select-none" style={{ color:"#71717a", cursor:"pointer" }}>
             <input type="checkbox" checked={allTime} onChange={e => toggleAllTime(e.target.checked)}
@@ -534,8 +534,7 @@ function AggregatesCard() {
 
   function toggleAllTime(next: boolean) {
     setAllTime(next);
-    setFrom(DATASET_START);
-    setTo(DATASET_END);
+    if (next) { setFrom(DATASET_START); setTo(DATASET_END); }
   }
 
   async function run() {
@@ -563,11 +562,11 @@ function AggregatesCard() {
             onEnter={run} style={{ width:180 }} />
           <div className="flex items-center gap-2">
             <span className="text-[11px]" style={{ color:"#52525b" }}>from</span>
-            <DarkInput type="date" value={from} onChange={setFrom} style={{ width:150 }} />
+            <DarkInput type="date" value={from} onChange={setFrom} style={{ width:150 }} disabled={allTime} />
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[11px]" style={{ color:"#52525b" }}>to</span>
-            <DarkInput type="date" value={to}   onChange={setTo}   style={{ width:150 }} />
+            <DarkInput type="date" value={to}   onChange={setTo}   style={{ width:150 }} disabled={allTime} />
           </div>
           <label className="flex items-center gap-1.5 text-[11px] select-none" style={{ color:"#71717a", cursor:"pointer" }}>
             <input type="checkbox" checked={allTime} onChange={e => toggleAllTime(e.target.checked)}
