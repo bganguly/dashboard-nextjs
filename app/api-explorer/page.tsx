@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const PORTFOLIO_URL = "https://bganguly.github.io/#nextjs_springboot";
 
-const DATASET_START = "2026-08-13";
-const DATASET_END   = "2026-09-11";
+const DATASET_START_FALLBACK = "2026-08-13";
+const DATASET_END_FALLBACK   = "2026-09-11";
 
 const SLOW_WAKING_MS = 800;
 const WAKE_WINDOW_MS = 30_000;
@@ -22,6 +22,12 @@ const S = {
   errBox:   { background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" },
   input:    { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#e4e4e7" },
 };
+
+function minus30d(date: string): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - 30);
+  return d.toISOString().slice(0, 10);
+}
 
 function timingStyle(ms: number) {
   if (ms < 300)  return { background:"rgba(16,185,129,0.12)", color:"#34d399", border:"1px solid rgba(16,185,129,0.25)" };
@@ -324,20 +330,23 @@ function mono(label: string, val: string) {
 
 // ── Endpoint cards ────────────────────────────────────────────────────────────
 
-function OrdersCard() {
+function OrdersCard({ dsStart, dsEnd }: { dsStart: string; dsEnd: string }) {
   const [loading, setLoading] = useState(false);
   const [res, setRes]         = useState<{ json: unknown; ms: number } | null>(null);
   const [err, setErr]         = useState<unknown>(null);
   const [countTotal, setCountTotal]     = useState<number | null>(null);
   const [countLoading, setCountLoading] = useState(false);
-  const [from, setFrom]       = useState(DATASET_START);
-  const [to,   setTo]         = useState(DATASET_END);
+  const [from, setFrom]       = useState(() => minus30d(DATASET_END_FALLBACK));
+  const [to,   setTo]         = useState(DATASET_END_FALLBACK);
   const [allTime, setAllTime] = useState(true);
   const { phase: wakePhase, wakeMs, onStart, onDone, onError } = useWakeBanner();
 
+  const dispFrom = allTime ? dsStart : from;
+  const dispTo   = allTime ? dsEnd   : to;
+
   function toggleAllTime(next: boolean) {
     setAllTime(next);
-    if (next) { setFrom(DATASET_START); setTo(DATASET_END); }
+    if (!next) { setFrom(minus30d(dsEnd)); setTo(dsEnd); }
   }
 
   async function run() {
@@ -377,11 +386,11 @@ function OrdersCard() {
           <div className="flex flex-wrap gap-2">{mono("pageSize","20")} {mono("sort","placedAt")} {mono("dir","desc")}</div>
           <div className="flex items-center gap-2">
             <span className="text-[11px]" style={{ color:"#52525b" }}>from</span>
-            <DarkInput type="date" value={from} onChange={setFrom} style={{ width:150 }} disabled={allTime} />
+            <DarkInput type="date" value={dispFrom} onChange={setFrom} style={{ width:150 }} disabled={allTime} />
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[11px]" style={{ color:"#52525b" }}>to</span>
-            <DarkInput type="date" value={to} onChange={setTo} style={{ width:150 }} disabled={allTime} />
+            <DarkInput type="date" value={dispTo} onChange={setTo} style={{ width:150 }} disabled={allTime} />
           </div>
           <label className="flex items-center gap-1.5 text-[11px] select-none" style={{ color:"#71717a", cursor:"pointer" }}>
             <input type="checkbox" checked={allTime} onChange={e => toggleAllTime(e.target.checked)}
@@ -404,10 +413,11 @@ function OrdersCard() {
   );
 }
 
-function SearchCard() {
+function SearchCard({ dsStart, dsEnd }: { dsStart: string; dsEnd: string }) {
   const [q, setQ]         = useState("");
-  const [from, setFrom]   = useState(DATASET_START);
-  const [to,   setTo]     = useState(DATASET_END);
+  const [from, setFrom]   = useState(() => minus30d(DATASET_END_FALLBACK));
+  const [to,   setTo]     = useState(DATASET_END_FALLBACK);
+  const [allTime, setAllTime] = useState(false);
   const [loading, setL]   = useState(false);
   const [res, setRes]     = useState<{ json: unknown; ms: number } | null>(null);
   const [err, setErr]     = useState<unknown>(null);
@@ -415,20 +425,32 @@ function SearchCard() {
   const [countLoading, setCountLoading] = useState(false);
   const { phase: wakePhase, wakeMs, onStart, onDone, onError } = useWakeBanner();
 
+  const dispFrom = allTime ? dsStart : from;
+  const dispTo   = allTime ? dsEnd   : to;
+
+  function toggleAllTime(next: boolean) {
+    setAllTime(next);
+    if (!next) { setFrom(minus30d(dsEnd)); setTo(dsEnd); }
+  }
+
   async function run() {
     if (!q.trim()) return;
     setL(true); setErr(null); setRes(null); setCountTotal(null);
     onStart();
     try {
       const term = q.trim();
-      const result = await fetchTimed(`/api/orders?q=${encodeURIComponent(term)}&page=1&pageSize=20&sort=placedAt&dir=desc&from=${from}&to=${to}`);
+      const dateParams = allTime ? "" : `&from=${from}&to=${to}`;
+      const result = await fetchTimed(`/api/orders?q=${encodeURIComponent(term)}&page=1&pageSize=20&sort=placedAt&dir=desc${dateParams}`);
       setRes(result);
       onDone(result.ms);
       const j = result.json as Record<string, unknown>;
-      if (j.countPending) {
+      if (j.approximate) {
         setCountLoading(true);
         try {
-          const { json: cj } = await fetchTimed(`/api/orders/count?q=${encodeURIComponent(term)}`);
+          const countUrl = allTime
+            ? `/api/orders/count?q=${encodeURIComponent(term)}`
+            : `/api/orders/count?q=${encodeURIComponent(term)}&from=${from}&to=${to}`;
+          const { json: cj } = await fetchTimed(countUrl);
           setCountTotal((cj as { total: number }).total ?? 0);
         } catch { /* ignore */ } finally { setCountLoading(false); }
       } else {
@@ -438,11 +460,12 @@ function SearchCard() {
   }
 
   const rows = (res?.json as Record<string,unknown>)?.data as OrderRow[] ?? [];
+  const rangeLabel = allTime ? "all time" : `${from} → ${to}`;
   const countLabel = countLoading
-    ? `counting matches for "${q}"…`
+    ? `counting matches for "${q}" · ${rangeLabel}…`
     : countTotal != null
-      ? `${Number(countTotal).toLocaleString()} match${Number(countTotal) !== 1 ? "es" : ""} for "${q}"`
-      : `showing ${rows.length} result${rows.length !== 1 ? "s" : ""} for "${q}"`;
+      ? `${Number(countTotal).toLocaleString()} match${Number(countTotal) !== 1 ? "es" : ""} for "${q}" · ${rangeLabel}`
+      : `showing ${rows.length} result${rows.length !== 1 ? "s" : ""} for "${q}" · ${rangeLabel}`;
 
   return (
     <Card path="/api/orders?q=…" subtitle="Full-text search — SQL ILIKE + keyset cursor pagination">
@@ -452,12 +475,17 @@ function SearchCard() {
             onEnter={run} style={{ width:220 }} />
           <div className="flex items-center gap-2">
             <span className="text-[11px]" style={{ color:"#52525b" }}>from</span>
-            <DarkInput type="date" value={from} onChange={setFrom} style={{ width:150 }} />
+            <DarkInput type="date" value={dispFrom} onChange={setFrom} style={{ width:150 }} disabled={allTime} />
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[11px]" style={{ color:"#52525b" }}>to</span>
-            <DarkInput type="date" value={to} onChange={setTo} style={{ width:150 }} />
+            <DarkInput type="date" value={dispTo} onChange={setTo} style={{ width:150 }} disabled={allTime} />
           </div>
+          <label className="flex items-center gap-1.5 text-[11px] select-none" style={{ color:"#71717a", cursor:"pointer" }}>
+            <input type="checkbox" checked={allTime} onChange={e => toggleAllTime(e.target.checked)}
+              className="h-3 w-3 rounded accent-indigo-500" />
+            All data
+          </label>
         </div>
         <RunBtn onClick={run} loading={loading} />
       </div>
@@ -525,24 +553,27 @@ function AggSummary({ rows, exactTotal }: { rows: Array<Record<string,unknown>>;
   );
 }
 
-function AggregatesCard() {
+function AggregatesCard({ dsStart, dsEnd }: { dsStart: string; dsEnd: string }) {
   const [q, setQ]         = useState("");
   const [allTime, setAllTime] = useState(true);
-  const [from, setFrom]   = useState(DATASET_START);
-  const [to,   setTo]     = useState(DATASET_END);
+  const [from, setFrom]   = useState(() => minus30d(DATASET_END_FALLBACK));
+  const [to,   setTo]     = useState(DATASET_END_FALLBACK);
   const [loading, setL]   = useState(false);
   const [res, setRes]     = useState<{ json: unknown; ms: number } | null>(null);
   const [err, setErr]     = useState<unknown>(null);
   const { phase: wakePhase, wakeMs, onStart, onDone, onError } = useWakeBanner();
 
+  const dispFrom = allTime ? dsStart : from;
+  const dispTo   = allTime ? dsEnd   : to;
+
   function toggleAllTime(next: boolean) {
     setAllTime(next);
-    if (next) { setFrom(DATASET_START); setTo(DATASET_END); }
+    if (!next) { setFrom(minus30d(dsEnd)); setTo(dsEnd); }
   }
 
   async function run() {
-    const effectiveFrom = allTime ? DATASET_START : from;
-    const effectiveTo   = allTime ? DATASET_END   : to;
+    const effectiveFrom = allTime ? dsStart : from;
+    const effectiveTo   = allTime ? dsEnd   : to;
     if (!effectiveFrom||!effectiveTo) return;
     setL(true); setErr(null); setRes(null);
     onStart();
@@ -567,11 +598,11 @@ function AggregatesCard() {
             onEnter={run} style={{ width:180 }} />
           <div className="flex items-center gap-2">
             <span className="text-[11px]" style={{ color:"#52525b" }}>from</span>
-            <DarkInput type="date" value={from} onChange={setFrom} style={{ width:150 }} disabled={allTime} />
+            <DarkInput type="date" value={dispFrom} onChange={setFrom} style={{ width:150 }} disabled={allTime} />
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[11px]" style={{ color:"#52525b" }}>to</span>
-            <DarkInput type="date" value={to}   onChange={setTo}   style={{ width:150 }} disabled={allTime} />
+            <DarkInput type="date" value={dispTo} onChange={setTo} style={{ width:150 }} disabled={allTime} />
           </div>
           <label className="flex items-center gap-1.5 text-[11px] select-none" style={{ color:"#71717a", cursor:"pointer" }}>
             <input type="checkbox" checked={allTime} onChange={e => toggleAllTime(e.target.checked)}
@@ -586,7 +617,7 @@ function AggregatesCard() {
       {wakePhase === "ready" && <ReadyBanner />}
       {!!err   && <ErrMsg err={err} />}
       {res && rows.length > 0 && <>
-        <MetaBar ms={res.ms} label={`${rows.length} day${rows.length!==1?"s":""} · ${allTime ? DATASET_START : from} → ${allTime ? DATASET_END : to}${q.trim()?` · q="${q.trim()}"`:""}`} />
+        <MetaBar ms={res.ms} label={`${rows.length} day${rows.length!==1?"s":""} · ${dispFrom} → ${dispTo}${q.trim()?` · q="${q.trim()}"`:""}`} />
         <AggSummary rows={rows} exactTotal={exactTotal} />
         <RawJson data={res.json} />
       </>}
@@ -644,9 +675,10 @@ function CustomersCard() {
 
 type BrushDay = { date: string; categories?: Record<string,{ totalOrders?:number; totalRevenue?:number }> };
 
-function BrushCard() {
+function BrushCard({ dsStart, dsEnd }: { dsStart: string; dsEnd: string }) {
   const [brushPhase, setBrushPhase] = useState<"init"|"loading"|"chart"|"error">("init");
   const { phase: wakePhase, wakeMs, onStart, onDone, onError } = useWakeBanner();
+  const [allTime, setAllTime] = useState(true);
   const [brushData, setBD]  = useState<BrushDay[]>([]);
   const [brushL, setBL]     = useState(0);
   const [brushR, setBR]     = useState(1);
@@ -675,11 +707,12 @@ function BrushCard() {
     } catch { /* ignore */ } finally { setF(false); }
   }
 
-  async function initBrush() {
+  async function initBrush(useAllTime = allTime) {
     setBrushPhase("loading");
     onStart();
+    const rangeFrom = useAllTime ? dsStart : minus30d(dsEnd);
     try {
-      const { json, ms } = await fetchTimed(`/api/aggregates?from=${DATASET_START}&to=${DATASET_END}&topCategories=1`);
+      const { json, ms } = await fetchTimed(`/api/aggregates?from=${rangeFrom}&to=${dsEnd}&topCategories=1`);
       const raw  = (json as Record<string,unknown>).data ?? json;
       const data = Array.isArray(raw) ? raw as BrushDay[] : [];
       if (!data.length) throw new Error("no data");
@@ -687,6 +720,11 @@ function BrushCard() {
       setBRes({ json, ms, from: data[0].date, to: data[data.length-1].date });
       onDone(ms);
     } catch { setBrushPhase("error"); onError(); }
+  }
+
+  function toggleAllTime(next: boolean) {
+    setAllTime(next);
+    if (brushPhase === "chart" || brushPhase === "error") initBrush(next);
   }
 
   function makeDrag(side: "l"|"r") {
@@ -727,10 +765,17 @@ function BrushCard() {
       <div className="pt-4">
         {brushPhase==="init" && (
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <p className="text-xs" style={{ color:"#52525b" }}>
-              Loads all aggregate data, then drag the handles to re-query any sub-range live.
-            </p>
-            <RunBtn onClick={initBrush} loading={false} />
+            <div className="flex items-center gap-3">
+              <p className="text-xs" style={{ color:"#52525b" }}>
+                Loads all aggregate data, then drag the handles to re-query any sub-range live.
+              </p>
+              <label className="flex items-center gap-1.5 text-[11px] select-none whitespace-nowrap" style={{ color:"#71717a", cursor:"pointer" }}>
+                <input type="checkbox" checked={allTime} onChange={e => setAllTime(e.target.checked)}
+                  className="h-3 w-3 rounded accent-indigo-500" />
+                All data
+              </label>
+            </div>
+            <RunBtn onClick={() => initBrush(allTime)} loading={false} />
           </div>
         )}
 
@@ -747,7 +792,14 @@ function BrushCard() {
           <div className="mb-4">
             <div className="flex items-center justify-between mb-3">
               <span className="text-[11px]" style={{ color:"#52525b" }}>Drag handles to re-query any sub-range</span>
-              <RunBtn onClick={initBrush} loading={false} />
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-1.5 text-[11px] select-none" style={{ color:"#71717a", cursor:"pointer" }}>
+                  <input type="checkbox" checked={allTime} onChange={e => toggleAllTime(e.target.checked)}
+                    className="h-3 w-3 rounded accent-indigo-500" />
+                  All data
+                </label>
+                <RunBtn onClick={() => initBrush(allTime)} loading={false} />
+              </div>
             </div>
             <svg viewBox="0 0 600 80" width="100%" height="80" preserveAspectRatio="none"
               style={{ display:"block", borderRadius:6 }}>
@@ -820,6 +872,21 @@ function BrushCard() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ApiExplorer() {
+  const [dsStart, setDsStart] = useState(DATASET_START_FALLBACK);
+  const [dsEnd,   setDsEnd]   = useState(DATASET_END_FALLBACK);
+
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/orders?page=1&pageSize=1&sort=placedAt&dir=asc").then(r => r.ok ? r.json() : null),
+      fetch("/api/orders?page=1&pageSize=1&sort=placedAt&dir=desc").then(r => r.ok ? r.json() : null),
+    ]).then(([earlyJ, lateJ]) => {
+      const s = String((earlyJ?.data?.[0]?.placedAt ?? "")).slice(0, 10);
+      const e = String((lateJ?.data?.[0]?.placedAt ?? "")).slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) setDsStart(s);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(e)) setDsEnd(e);
+    }).catch(() => {});
+  }, []);
+
   return (
     <div style={{ background:"#0f0f13", minHeight:"100vh" }} className="text-zinc-100 font-sans antialiased">
       <style>{`
@@ -863,14 +930,19 @@ export default function ApiExplorer() {
             <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background:"#818cf8" }} />
             {typeof window !== "undefined" ? window.location.origin : ""}/api
           </div>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono"
+            style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", color:"#52525b" }}>
+            <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background:"#34d399" }} />
+            dataset {dsStart} → {dsEnd}
+          </div>
         </div>
       </section>
 
       <section className="px-6 pb-24 max-w-5xl mx-auto space-y-5">
-        <OrdersCard />
-        <SearchCard />
-        <AggregatesCard />
-        <BrushCard />
+        <OrdersCard dsStart={dsStart} dsEnd={dsEnd} />
+        <SearchCard dsStart={dsStart} dsEnd={dsEnd} />
+        <AggregatesCard dsStart={dsStart} dsEnd={dsEnd} />
+        <BrushCard dsStart={dsStart} dsEnd={dsEnd} />
         <CustomersCard />
       </section>
     </div>
