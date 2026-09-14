@@ -61,12 +61,12 @@ printf '\n=== dashboard-nextjs ===\n\n'
 printf '  [1] Local  — Next.js dev server on localhost:3000 (no GCP cost)'
 (( _local_running )) && printf ' [running]' || printf ' [not detected]'
 printf '\n'
-printf '  [2] Lite   — GCP: Cloud Run (scales to zero, cold starts OK)'
+printf '  [2] Lite   — GCP: Cloud Run (scales to zero, cold starts OK) ~400K orders'
 (( _lite_count > 0 )) && printf ' [%s resources active]' "$_lite_count" || printf ' [not deployed]'
 printf '\n'
-printf '  [3] Full   — GCP: Cloud Run (min 1 instance, always warm)'
+printf '  [3] Full   — GCP: Cloud Run (min 1 instance, always warm) ~4M orders'
 (( _full_count > 0 )) && printf ' [%s resources active]' "$_full_count" || printf ' [not deployed]'
-printf '\n'
+printf '               Cloud Run deployment; GKE available on request.\n'
 
 if [[ -n "${DEPLOY_MODE:-}" ]]; then
   _TARGET="remote"
