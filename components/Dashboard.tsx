@@ -36,6 +36,7 @@ export default function Dashboard({ initialAggregates }: DashboardProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [backendRuntime, setBackendRuntime] = useState<string | null>(null);
   const [typesenseAvailable, setTypesenseAvailable] = useState<boolean | null>(null);
+  const [searchMode, setSearchMode] = useState<string | null>(null);
   const [chartTotal, setChartTotal] = useState<number | null>(null);
   const [exactCount, setExactCount] = useState<number | null>(null);
 
@@ -60,9 +61,10 @@ export default function Dashboard({ initialAggregates }: DashboardProps) {
 
     fetch("/api/status")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((d: { runtime: string; typesense: boolean }) => {
+      .then((d: { runtime: string; typesense: boolean; searchMode?: string }) => {
         setBackendRuntime(d.runtime);
         setTypesenseAvailable(d.typesense);
+        setSearchMode(d.searchMode ?? (d.typesense ? "typesense" : "postgres-ilike"));
         if (slowTimer.current) { clearTimeout(slowTimer.current); slowTimer.current = null; }
         if (wakeInterval.current) { clearInterval(wakeInterval.current); wakeInterval.current = null; }
         setWakeStatus((s) => (s === "waking" ? "ready" : null));
@@ -120,12 +122,14 @@ export default function Dashboard({ initialAggregates }: DashboardProps) {
                   backend · {backendRuntime}
                 </span>
               )}
-              {typesenseAvailable !== null && (
+              {searchMode !== null && (
                 <span className="inline-block text-[11px] px-2 py-0.5 rounded-full font-medium"
-                  style={typesenseAvailable
+                  style={searchMode === "typesense"
                     ? { background:"rgba(99,102,241,0.10)", border:"1px solid rgba(99,102,241,0.25)", color:"#818cf8" }
+                    : searchMode === "postgres-fts"
+                    ? { background:"rgba(16,185,129,0.10)", border:"1px solid rgba(16,185,129,0.25)", color:"#34d399" }
                     : { background:"rgba(113,113,122,0.10)", border:"1px solid rgba(113,113,122,0.25)", color:"#a1a1aa" }}>
-                  search · {typesenseAvailable ? "typesense" : "postgres"}
+                  search · {searchMode}
                 </span>
               )}
             </div>
