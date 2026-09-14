@@ -344,14 +344,16 @@ function OrdersCard() {
     setLoading(true); setErr(null); setRes(null); setCountTotal(null);
     onStart();
     try {
-      const result = await fetchTimed(`/api/orders?q=&page=1&pageSize=20&sort=placedAt&dir=desc&from=${from}&to=${to}`);
+      const dateParams = allTime ? "" : `&from=${from}&to=${to}`;
+      const result = await fetchTimed(`/api/orders?q=&page=1&pageSize=20&sort=placedAt&dir=desc${dateParams}`);
       setRes(result);
       onDone(result.ms);
       const j = result.json as Record<string, unknown>;
-      if (j.countPending) {
+      if (j.approximate) {
         setCountLoading(true);
         try {
-          const { json: cj } = await fetchTimed("/api/orders/count");
+          const countUrl = allTime ? "/api/orders/count" : `/api/orders/count?from=${from}&to=${to}`;
+          const { json: cj } = await fetchTimed(countUrl);
           setCountTotal((cj as { total: number }).total ?? 0);
         } catch { /* ignore */ } finally { setCountLoading(false); }
       } else {
@@ -361,11 +363,12 @@ function OrdersCard() {
   }
 
   const rows = (res?.json as Record<string,unknown>)?.data as OrderRow[] ?? [];
+  const rangeLabel = allTime ? "all time" : `${from} → ${to}`;
   const countLabel = countLoading
-    ? `showing first ${rows.length} · counting…`
+    ? `showing first ${rows.length} · ${rangeLabel} · counting…`
     : countTotal != null
-      ? `${Number(countTotal).toLocaleString()} total orders · showing first ${rows.length}`
-      : `showing first ${rows.length}`;
+      ? `${Number(countTotal).toLocaleString()} total orders · showing first ${rows.length} · ${rangeLabel}`
+      : `showing first ${rows.length} · ${rangeLabel}`;
 
   return (
     <Card path="/api/orders" subtitle="Latest orders — paginated, sorted by date descending">
@@ -538,11 +541,13 @@ function AggregatesCard() {
   }
 
   async function run() {
-    if (!from||!to) return;
+    const effectiveFrom = allTime ? DATASET_START : from;
+    const effectiveTo   = allTime ? DATASET_END   : to;
+    if (!effectiveFrom||!effectiveTo) return;
     setL(true); setErr(null); setRes(null);
     onStart();
     try {
-      const params = new URLSearchParams({ q: q.trim(), from, to, topCategories: "4" });
+      const params = new URLSearchParams({ q: q.trim(), from: effectiveFrom, to: effectiveTo, topCategories: "4" });
       const result = await fetchTimed(`/api/aggregates?${params}`);
       setRes(result);
       onDone(result.ms);
@@ -581,7 +586,7 @@ function AggregatesCard() {
       {wakePhase === "ready" && <ReadyBanner />}
       {!!err   && <ErrMsg err={err} />}
       {res && rows.length > 0 && <>
-        <MetaBar ms={res.ms} label={`${rows.length} day${rows.length!==1?"s":""} · ${from} → ${to}${q.trim()?` · q="${q.trim()}"`:""}`} />
+        <MetaBar ms={res.ms} label={`${rows.length} day${rows.length!==1?"s":""} · ${allTime ? DATASET_START : from} → ${allTime ? DATASET_END : to}${q.trim()?` · q="${q.trim()}"`:""}`} />
         <AggSummary rows={rows} exactTotal={exactTotal} />
         <RawJson data={res.json} />
       </>}
