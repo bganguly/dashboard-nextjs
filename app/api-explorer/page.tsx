@@ -474,17 +474,20 @@ function SearchCard() {
   );
 }
 
-function AggSummary({ rows }: { rows: Array<Record<string,unknown>> }) {
-  let totalOrders = 0, totalRevenue = 0;
+function AggSummary({ rows, exactTotal }: { rows: Array<Record<string,unknown>>; exactTotal?: number }) {
+  let totalRevenue = 0;
   rows.forEach(day => {
     Object.values((day.categories as Record<string,{ totalOrders?:number; totalRevenue?:number }>)||{})
-      .forEach(c => { totalOrders += c.totalOrders||0; totalRevenue += c.totalRevenue||0; });
+      .forEach(c => { totalRevenue += c.totalRevenue||0; });
   });
+  const displayOrders = exactTotal ?? rows.reduce((s, day) =>
+    s + Object.values((day.categories as Record<string,{ totalOrders?:number }>)||{})
+      .reduce((ds, c) => ds + (c.totalOrders||0), 0), 0);
   return (
     <>
       <div className="grid grid-cols-3 gap-3 mb-4">
         {[
-          { l:"Total Orders",  v: totalOrders.toLocaleString(),   c:"#f4f4f5" },
+          { l:"Total Orders",  v: displayOrders.toLocaleString(),   c:"#f4f4f5" },
           { l:"Est. Revenue",  v:`$${totalRevenue.toLocaleString(undefined,{maximumFractionDigits:0})}`, c:"#34d399" },
           { l:"Days Returned", v: String(rows.length), c:"#f4f4f5" },
         ].map(({ l, v, c }) => (
@@ -547,8 +550,10 @@ function AggregatesCard() {
     } catch (e) { setErr(e); onError(); } finally { setL(false); }
   }
 
-  const rawData = (res?.json as Record<string,unknown>)?.data ?? res?.json;
+  const resJson = res?.json as Record<string,unknown> | null;
+  const rawData = resJson?.data ?? res?.json;
   const rows    = Array.isArray(rawData) ? rawData as Array<Record<string,unknown>> : [];
+  const exactTotal = typeof resJson?.totalOrders === "number" ? resJson.totalOrders as number : undefined;
 
   return (
     <Card path="/api/aggregates?from=…&to=…" subtitle="Daily aggregates — in-process cache for unfiltered queries">
@@ -578,7 +583,7 @@ function AggregatesCard() {
       {!!err   && <ErrMsg err={err} />}
       {res && rows.length > 0 && <>
         <MetaBar ms={res.ms} label={`${rows.length} day${rows.length!==1?"s":""} · ${from} → ${to}${q.trim()?` · q="${q.trim()}"`:""}`} />
-        <AggSummary rows={rows} />
+        <AggSummary rows={rows} exactTotal={exactTotal} />
         <RawJson data={res.json} />
       </>}
       {res && rows.length === 0 && <p className="text-xs" style={{ color:"#71717a" }}>No data for this range.</p>}
