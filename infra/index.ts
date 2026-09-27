@@ -21,7 +21,7 @@ const frontendService = new gcp.cloudrunv2.Service("frontend", {
     containers: [{
       image: frontendImage,
       ports: [{ containerPort: 3000 }],
-      resources: { limits: { cpu, memory }, cpuIdle: true },
+      resources: { limits: { cpu, memory }, cpuIdle: true, startupCpuBoost: true },
       envs: [{
         name: "SPRING_API_URL",
         value: springApiUrl,
