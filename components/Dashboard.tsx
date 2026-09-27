@@ -28,9 +28,10 @@ function mergeRegions(prev: RegionOption[], incoming: RegionOption[]): RegionOpt
 
 interface DashboardProps {
   initialAggregates: RawAggregate[];
+  initialApiTotal?: number | null;
 }
 
-export default function Dashboard({ initialAggregates }: DashboardProps) {
+export default function Dashboard({ initialAggregates, initialApiTotal }: DashboardProps) {
   const [filters, setFilters] = useState<OrderFilters>(EMPTY_FILTERS);
   const [regionOptions, setRegionOptions] = useState<RegionOption[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -173,6 +174,7 @@ export default function Dashboard({ initialAggregates }: DashboardProps) {
               onTotalChange={setChartTotal}
               overrideTotal={exactCount}
               initialData={initialAggregates}
+              initialApiTotal={initialApiTotal}
             />
             <SearchTable
               filters={filters}

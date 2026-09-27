@@ -70,6 +70,7 @@ interface ChartProps {
   onTotalChange?: (n: number) => void;
   overrideTotal?: number | null;
   initialData?: RawAggregate[];
+  initialApiTotal?: number | null;
 }
 
 export default function Chart({
@@ -81,6 +82,7 @@ export default function Chart({
   onTotalChange,
   overrideTotal,
   initialData = [],
+  initialApiTotal = null,
 }: ChartProps) {
   const [rawData, setRawData] = useState<RawAggregate[]>(initialData);
   const [range, setRange] = useState(defaultRange);
@@ -91,7 +93,7 @@ export default function Chart({
   const [showOthers, setShowOthers] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const dragTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [apiTotal, setApiTotal] = useState<number | null>(null);
+  const [apiTotal, setApiTotal] = useState<number | null>(initialApiTotal);
   const lastRequestKeyRef = useRef<string | null>(null);
 
   const fetchAggregates = useCallback(async (from: string, to: string) => {
