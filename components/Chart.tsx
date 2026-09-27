@@ -155,6 +155,7 @@ export default function Chart({
     () => rawData.reduce((sum, day) => sum + Object.values(day.categories ?? {}).reduce((s, c) => s + (c.totalOrders ?? 0), 0), 0),
     [rawData],
   );
+  const matchedOrders = apiTotal ?? summedCategoryOrders;
 
   useEffect(() => {
     if (apiTotal != null) onTotalChangeRef.current?.(apiTotal);
@@ -169,11 +170,12 @@ export default function Chart({
     const topSet = new Set(topCategories);
     const entries = topCategories.map(cat => ({ key: cat, orders: categoryTotals.find(c => c.category === cat)?.orders ?? 0 }));
     if (withOther) {
-      const othersOrders = categoryTotals.filter(c => !topSet.has(c.category)).reduce((s, c) => s + c.orders, 0);
+      const topOrdersSum = entries.reduce((s, e) => s + e.orders, 0);
+      const othersOrders = Math.max(0, matchedOrders - topOrdersSum);
       entries.push({ key: OTHER_KEY, orders: othersOrders });
     }
     return entries.sort((a, b) => b.orders - a.orders);
-  }, [categoryTotals, topCategories, withOther]);
+  }, [categoryTotals, topCategories, withOther, matchedOrders]);
 
   const seriesKeys = useMemo(() => seriesRanked.filter(s => showOthers || s.key !== OTHER_KEY).map(s => s.key), [seriesRanked, showOthers]);
   const colorMap   = useMemo(() => { const m = new Map<string,string>(); topCategories.forEach((c,i) => m.set(c, COLORS[i % COLORS.length])); return m; }, [topCategories]);
