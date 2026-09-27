@@ -272,7 +272,7 @@ export default function SearchTable({
   const pageItems = useMemo(() => getPageItems(page, displayTotalPages), [page, displayTotalPages]);
 
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
       <div className="mb-4 flex items-center gap-3">
         <h2 className="text-xl font-semibold">Search orders</h2>
         {loading && (
