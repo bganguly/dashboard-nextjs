@@ -21,14 +21,13 @@ const frontendService = new gcp.cloudrunv2.Service("frontend", {
     containers: [{
       image: frontendImage,
       ports: [{ containerPort: 3000 }],
-      resources: { limits: { cpu, memory } },
+      resources: { limits: { cpu, memory }, cpuIdle: true },
       envs: [{
         name: "SPRING_API_URL",
         value: springApiUrl,
       }],
     }],
     scaling: { minInstanceCount, maxInstanceCount },
-    cpuThrottling: true,
   },
   traffics: [{ type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 }],
 });
