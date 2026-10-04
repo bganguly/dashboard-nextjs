@@ -64,7 +64,7 @@ printf '\n'
 printf '  [2] Lite   — GCP: Cloud Run (scales to zero, cold starts OK) ~400K orders'
 (( _lite_count > 0 )) && printf ' [%s resources active]' "$_lite_count" || printf ' [not deployed]'
 printf '\n'
-printf '  [3] Full   — GCP: Cloud Run (min 1 instance, always warm) ~4M orders'
+printf '  [3] Full   — GCP: Cloud Run (scales to zero, cold starts OK) ~4M orders'
 (( _full_count > 0 )) && printf ' [%s resources active]' "$_full_count" || printf ' [not deployed]'
 printf '               Cloud Run deployment; GKE available on request.\n'
 
@@ -319,7 +319,7 @@ if [[ "$DEPLOY_MODE" == "lite" ]]; then
   pulumi config set memory           "512Mi"
 else
   pulumi config set namePrefix       "dash-nextjs-full"
-  pulumi config set minInstanceCount "1"
+  pulumi config set minInstanceCount "0"
   pulumi config set maxInstanceCount "3"
   pulumi config set cpu              "1"
   pulumi config set memory           "512Mi"
