@@ -94,7 +94,7 @@ export default function Chart({
   const abortRef = useRef<AbortController | null>(null);
   const dragTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [apiTotal, setApiTotal] = useState<number | null>(initialApiTotal);
-  const stableTotalRef = useRef<number | null>(null);
+
   const lastRequestKeyRef = useRef<string | null>(null);
 
   const fetchAggregates = useCallback(async (from: string, to: string) => {
@@ -108,7 +108,7 @@ export default function Chart({
 
     abortRef.current?.abort();
     const ctrl = new AbortController(); abortRef.current = ctrl;
-    setLoading(true); setError(null); setApiTotal(null);
+    setLoading(true); setError(null);
     try {
       const res = await fetch(`${endpoint}?${params}`, { signal: ctrl.signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -158,8 +158,7 @@ export default function Chart({
     () => rawData.reduce((sum, day) => sum + Object.values(day.categories ?? {}).reduce((s, c) => s + (c.totalOrders ?? 0), 0), 0),
     [rawData],
   );
-  if (apiTotal != null) { stableTotalRef.current = apiTotal; }
-  const matchedOrders = apiTotal ?? stableTotalRef.current ?? summedCategoryOrders;
+  const matchedOrders = apiTotal ?? summedCategoryOrders;
 
   useEffect(() => {
     if (apiTotal != null) onTotalChangeRef.current?.(apiTotal);
