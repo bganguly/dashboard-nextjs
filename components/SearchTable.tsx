@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { appendFilterParams, type OrderFilters } from "@/components/FilterSidebar";
+import Pagination from "@/components/Pagination";
 
 export type SearchRow = Record<string, unknown>;
 
@@ -75,21 +76,6 @@ const COLUMNS: ColumnDef[] = [
   { key: "notes",    label: "Notes",                          render: (r) => formatCell(r.notes) },
   { key: "placedAt", label: "Placed",   sortKey: "placedAt", render: renderDate },
 ];
-
-type PageItem = number | "left-ellipsis" | "right-ellipsis";
-
-function getPageItems(current: number, total: number): PageItem[] {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-  const sibling = 1;
-  const left = Math.max(current - sibling, 1);
-  const right = Math.min(current + sibling, total);
-  const items: PageItem[] = [1];
-  if (left > 2) items.push("left-ellipsis");
-  for (let i = Math.max(left, 2); i <= Math.min(right, total - 1); i++) items.push(i);
-  if (right < total - 1) items.push("right-ellipsis");
-  items.push(total);
-  return items;
-}
 
 export default function SearchTable({
   endpoint = "/api/orders",
@@ -269,8 +255,6 @@ export default function SearchTable({
     goToPage(clamped);
   }, [page, displayTotalPages, debouncedQuery, filters, fetchAdjacentByCursor, goToPage]);
 
-  const pageItems = useMemo(() => getPageItems(page, displayTotalPages), [page, displayTotalPages]);
-
   return (
     <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
       <div className="mb-4 flex items-center gap-3">
@@ -396,47 +380,13 @@ export default function SearchTable({
         </span>
 
         {displayTotalPages > 1 && (
-          <nav aria-label="Pagination">
-            <ul className="flex items-center gap-1">
-              <li>
-                <button type="button" data-testid="prev-page" onClick={() => goToAdjacentPage("prev")}
-                  disabled={page <= 1 || loading}
-                  className="flex h-9 items-center rounded-md border border-gray-300 px-3 text-sm hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:hover:bg-gray-800">
-                  Prev
-                </button>
-              </li>
-              {pageItems.map((item) => {
-                if (item === "left-ellipsis" || item === "right-ellipsis") {
-                  return <li key={item} aria-hidden className="px-2 text-sm text-gray-400">…</li>;
-                }
-                const isActive = item === page;
-                const handleClick =
-                  item === page - 1 ? () => goToAdjacentPage("prev")
-                  : item === page + 1 ? () => goToAdjacentPage("next")
-                  : () => goToPage(item);
-                return (
-                  <li key={item} data-testid={`page-${item}`}>
-                    <button type="button" onClick={handleClick}
-                      aria-current={isActive ? "page" : undefined}
-                      data-testid={isActive ? "current-page" : undefined}
-                      className={cn(
-                        "flex h-9 min-w-9 items-center justify-center rounded-md px-3 text-sm transition-colors",
-                        isActive ? "bg-indigo-600 text-white" : "border border-gray-300 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800",
-                      )}>
-                      {item}
-                    </button>
-                  </li>
-                );
-              })}
-              <li>
-                <button type="button" data-testid="next-page" onClick={() => goToAdjacentPage("next")}
-                  disabled={page >= displayTotalPages || loading}
-                  className="flex h-9 items-center rounded-md border border-gray-300 px-3 text-sm hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:hover:bg-gray-800">
-                  Next
-                </button>
-              </li>
-            </ul>
-          </nav>
+          <Pagination
+            page={page}
+            totalPages={displayTotalPages}
+            loading={loading}
+            goToPage={goToPage}
+            goToAdjacentPage={goToAdjacentPage}
+          />
         )}
       </footer>
     </section>
