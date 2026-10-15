@@ -11,8 +11,9 @@ Nginx layer. Deployed as a Next.js standalone image to GCP Cloud Run via **Pulum
 
 | Endpoint | URL |
 |---|---|
-| **Dashboard** | https://dash-nextjs-full-frontend-77y7e2wykq-uc.a.run.app |
-| **Portfolio demo** | https://bganguly.github.io/#orders_dashboard |
+| **Dashboard** | https://dash-nextjs-full-frontend-77y7e2wykq-uc.a.run.app/ |
+| **API Explorer** | https://dash-nextjs-full-frontend-77y7e2wykq-uc.a.run.app/api-explorer |
+| **Portfolio demo** | https://bganguly.github.io/#nextjs_springboot |
 
 > Cloud Run scales to zero when idle; the first request may take a few seconds to wake.
 
