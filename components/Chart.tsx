@@ -242,7 +242,7 @@ export default function Chart({
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={320}>
-          <BarChart data={buckets} margin={{ top: 8, right: 8 + 56, left: 8, bottom: 0 }}>
+          <BarChart key={`${filters?.from ?? ''}_${filters?.to ?? ''}`} data={buckets} margin={{ top: 8, right: 8 + 56, left: 8, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
             <XAxis dataKey="date" fontSize={12} tickMargin={8} stroke={axisColor} tick={{ fill: axisColor }} />
             <YAxis fontSize={12} width={56} stroke={axisColor} tick={{ fill: axisColor }} tickFormatter={compact} />
