@@ -170,10 +170,9 @@ PYEOF
 # ── Menu ──────────────────────────────────────────────────────────────────────
 
 _prompt_menu() {
-  local _local_running=0 _lite_count=0 _full_count=0
+  local _local_running=0 _full_count=0
   lsof -ti:3000 >/dev/null 2>&1 && _local_running=1 || true
   if command -v pulumi >/dev/null 2>&1 && pulumi whoami >/dev/null 2>&1; then
-    _lite_count=$(_pulumi_stack_count lite)
     _full_count=$(_pulumi_stack_count full)
   fi
 
@@ -181,12 +180,9 @@ _prompt_menu() {
   printf '  [1] Local  — Next.js dev server on localhost:3000 (no GCP cost)'
   (( _local_running )) && printf ' [running]' || printf ' [not detected]'
   printf '\n'
-  printf '  [2] Lite   — GCP: Cloud Run (scales to zero, cold starts OK) ~400K orders'
-  (( _lite_count > 0 )) && printf ' [%s resources active]' "$_lite_count" || printf ' [not deployed]'
-  printf '\n'
-  printf '  [3] Full   — GCP: Cloud Run (scales to zero, cold starts OK) ~4M orders'
+  printf '  [2] Full   — GCP: Cloud Run (scales to zero, cold starts OK) ~4M orders'
   (( _full_count > 0 )) && printf ' [%s resources active]' "$_full_count" || printf ' [not deployed]'
-  printf '               Cloud Run deployment; GKE available on request.\n'
+  printf '\n'
 
   if [[ -n "${DEPLOY_MODE:-}" ]]; then
     _TARGET="remote"
@@ -194,11 +190,10 @@ _prompt_menu() {
     return
   fi
 
-  printf '\nChoice [1/2/3, default: 3]: '
+  printf '\nChoice [1/2, default: 2]: '
   read -r _MODE
   case "$_MODE" in
     1) _TARGET="local";  DEPLOY_MODE=""     ;;
-    2) _TARGET="remote"; DEPLOY_MODE="lite" ;;
     *) _TARGET="remote"; DEPLOY_MODE="full" ;;
   esac
 }
