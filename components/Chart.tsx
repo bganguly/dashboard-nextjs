@@ -87,7 +87,7 @@ export default function Chart({
   const [rawData, setRawData] = useState<RawAggregate[]>(initialData);
   const [range, setRange] = useState(defaultRange);
   const onTotalChangeRef = useRef(onTotalChange);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(initialData.length === 0);
   const [warmingUp, setWarmingUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showOthers, setShowOthers] = useState(false);

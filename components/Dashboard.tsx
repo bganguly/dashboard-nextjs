@@ -11,7 +11,7 @@ import FilterSidebar, {
 } from "@/components/FilterSidebar";
 import BackToPortfolio from "@/components/BackToPortfolio";
 
-const SLOW_WAKING_MS = 800;
+const SLOW_WAKING_MS = 0;
 
 function mergeRegions(prev: RegionOption[], incoming: RegionOption[]): RegionOption[] {
   const map = new Map(prev.map((r) => [r.code, r]));
