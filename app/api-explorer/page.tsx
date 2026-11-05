@@ -31,12 +31,9 @@ export default function ApiExplorer() {
       readyTimer.current = setTimeout(() => setWakeStatus(s => (s === "ready" ? null : s)), 1200);
     };
 
-    Promise.all([
-      fetch("/api/orders?page=1&pageSize=1&sort=placedAt&dir=asc").then(r => r.ok ? r.json() : null),
-      fetch("/api/orders?page=1&pageSize=1&sort=placedAt&dir=desc").then(r => r.ok ? r.json() : null),
-    ]).then(([earlyJ, lateJ]) => {
-      const s = String((earlyJ?.data?.[0]?.placedAt ?? "")).slice(0, 10);
-      const e = String((lateJ?.data?.[0]?.placedAt ?? "")).slice(0, 10);
+    fetch("/api/dataset-bounds").then(r => r.ok ? r.json() : null).then(b => {
+      const s = String((b as { from?: string })?.from ?? "").slice(0, 10);
+      const e = String((b as { to?: string })?.to   ?? "").slice(0, 10);
       if (/^\d{4}-\d{2}-\d{2}$/.test(s)) setDsStart(s);
       if (/^\d{4}-\d{2}-\d{2}$/.test(e)) setDsEnd(e);
       markReady();
@@ -83,7 +80,7 @@ export default function ApiExplorer() {
                 <span style={{ width:10, height:10, borderRadius:"50%", border:"2px solid #fbbf24",
                   borderTopColor:"transparent", display:"inline-block",
                   animation:"api-explorer-spin 0.7s linear infinite" }} />
-                Probing GET /api/orders —
+                Probing backend · fetching bounds —
                 <span style={{ fontFamily:"monospace", marginLeft:"4px" }}>{(wakeMs/1000).toFixed(1)}s</span>
               </div>
             )}
