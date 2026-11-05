@@ -170,7 +170,7 @@ export function SearchCard({ dsStart, dsEnd }: { dsStart: string; dsEnd: string 
     <Card path="/api/orders?q=…" subtitle="Full-text search — SQL ILIKE + keyset cursor pagination">
       <div className="flex flex-wrap items-center justify-between gap-3 pt-4 mb-4">
         <div className="flex flex-wrap items-center gap-3">
-          <DarkInput value={q} onChange={setQ} placeholder="e.g. murphy, saturday, fragile…"
+          <DarkInput value={q} onChange={setQ} placeholder="e.g. kihn, saturday, perishable"
             onEnter={run} style={{ width:220 }} />
           <div className="flex items-center gap-2">
             <span className="text-[11px]" style={{ color:"#52525b" }}>from</span>
@@ -295,7 +295,7 @@ export function AggregatesCard({ dsStart, dsEnd }: { dsStart: string; dsEnd: str
     <Card path="/api/aggregates?from=…&to=…" subtitle="Daily aggregates — in-process cache for unfiltered queries">
       <div className="flex flex-wrap items-center justify-between gap-3 pt-4 mb-4">
         <div className="flex flex-wrap items-center gap-3">
-          <DarkInput value={q} onChange={setQ} placeholder="e.g. cassin, berg"
+          <DarkInput value={q} onChange={setQ} placeholder="e.g. kihn, feest"
             onEnter={run} style={{ width:180 }} />
           <div className="flex items-center gap-2">
             <span className="text-[11px]" style={{ color:"#52525b" }}>from</span>
@@ -355,7 +355,7 @@ export function CustomersCard() {
     <Card path="/api/customers" subtitle="Customer list — cursor-paginated">
       <div className="flex flex-wrap items-center justify-between gap-3 pt-4 mb-4">
         <div className="flex items-center gap-3">
-          <DarkInput value={q} onChange={setQ} placeholder="e.g. gupta, sara frank…"
+          <DarkInput value={q} onChange={setQ} placeholder="e.g. kihn, flo"
             onEnter={run} style={{ width:200 }} />
           {mono("limit","20")}
         </div>
