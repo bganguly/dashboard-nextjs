@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { DATASET_START_FALLBACK, DATASET_END_FALLBACK } from "./explorer-utils";
-import { OrdersCard, SearchCard, AggregatesCard, BrushCard, CustomersCard } from "./endpoint-cards";
+import { OrdersCard, SearchCard, AggregatesCard, BrushCard, CustomersCard, RegionsCard } from "./endpoint-cards";
 
 const PORTFOLIO_URL = "https://bganguly.github.io/#nextjs_springboot";
 
@@ -133,6 +133,7 @@ export default function ApiExplorer() {
         <AggregatesCard dsStart={dsStart} dsEnd={dsEnd} />
         <BrushCard dsStart={dsStart} dsEnd={dsEnd} />
         <CustomersCard />
+        <RegionsCard />
       </section>
     </div>
   );

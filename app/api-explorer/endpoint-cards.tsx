@@ -116,7 +116,7 @@ export function SearchCard({ dsStart, dsEnd }: { dsStart: string; dsEnd: string 
   const [q, setQ]         = useState("");
   const [from, setFrom]   = useState(() => minus30d(DATASET_END_FALLBACK));
   const [to,   setTo]     = useState(DATASET_END_FALLBACK);
-  const [allTime, setAllTime] = useState(false);
+  const [allTime, setAllTime] = useState(true);
   const [loading, setL]   = useState(false);
   const [res, setRes]     = useState<{ json: unknown; ms: number } | null>(null);
   const [err, setErr]     = useState<unknown>(null);
@@ -254,10 +254,16 @@ function AggSummary({ rows, exactTotal }: { rows: Array<Record<string,unknown>>;
   );
 }
 
+function minus90d(date: string): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - 90);
+  return d.toISOString().slice(0, 10);
+}
+
 export function AggregatesCard({ dsStart, dsEnd }: { dsStart: string; dsEnd: string }) {
   const [q, setQ]         = useState("");
-  const [allTime, setAllTime] = useState(true);
-  const [from, setFrom]   = useState(() => minus30d(DATASET_END_FALLBACK));
+  const [allTime, setAllTime] = useState(false);
+  const [from, setFrom]   = useState(() => minus90d(DATASET_END_FALLBACK));
   const [to,   setTo]     = useState(DATASET_END_FALLBACK);
   const [loading, setL]   = useState(false);
   const [res, setRes]     = useState<{ json: unknown; ms: number } | null>(null);
@@ -269,7 +275,7 @@ export function AggregatesCard({ dsStart, dsEnd }: { dsStart: string; dsEnd: str
 
   function toggleAllTime(next: boolean) {
     setAllTime(next);
-    if (!next) { setFrom(minus30d(dsEnd)); setTo(dsEnd); }
+    if (!next) { setFrom(minus90d(dsEnd)); setTo(dsEnd); }
   }
 
   async function run() {
@@ -381,7 +387,7 @@ type BrushDay = { date: string; categories?: Record<string,{ totalOrders?:number
 export function BrushCard({ dsStart, dsEnd }: { dsStart: string; dsEnd: string }) {
   const [brushPhase, setBrushPhase] = useState<"init"|"loading"|"chart"|"error">("init");
   const { phase: wakePhase, wakeMs, onStart, onDone, onError } = useWakeBanner();
-  const [allTime, setAllTime] = useState(true);
+  const [allTime, setAllTime] = useState(false);
   const [brushData, setBD]  = useState<BrushDay[]>([]);
   const [brushL, setBL]     = useState(0);
   const [brushR, setBR]     = useState(1);
@@ -405,7 +411,7 @@ export function BrushCard({ dsStart, dsEnd }: { dsStart: string; dsEnd: string }
     if (!from||!to) return;
     setF(true);
     try {
-      const r2 = await fetchTimed(`/api/aggregates?from=${from}&to=${to}&topCategories=1`);
+      const r2 = await fetchTimed(`/api/aggregates?from=${from}&to=${to}&topCategories=4`);
       setBRes({ ...r2, from, to });
     } catch { /* ignore */ } finally { setF(false); }
   }
@@ -415,7 +421,7 @@ export function BrushCard({ dsStart, dsEnd }: { dsStart: string; dsEnd: string }
     onStart();
     const rangeFrom = useAllTime ? dsStart : minus30d(dsEnd);
     try {
-      const { json, ms } = await fetchTimed(`/api/aggregates?from=${rangeFrom}&to=${dsEnd}&topCategories=1`);
+      const { json, ms } = await fetchTimed(`/api/aggregates?from=${rangeFrom}&to=${dsEnd}&topCategories=4`);
       const raw  = (json as Record<string,unknown>).data ?? json;
       const data = Array.isArray(raw) ? raw as BrushDay[] : [];
       if (!data.length) throw new Error("no data");
@@ -429,6 +435,7 @@ export function BrushCard({ dsStart, dsEnd }: { dsStart: string; dsEnd: string }
     setAllTime(next);
     if (brushPhase === "chart" || brushPhase === "error") initBrush(next);
   }
+
 
   function makeDrag(side: "l"|"r") {
     return {
@@ -568,6 +575,64 @@ export function BrushCard({ dsStart, dsEnd }: { dsStart: string; dsEnd: string }
           </div>
         )}
       </div>
+    </Card>
+  );
+}
+
+// ── Regions card ──────────────────────────────────────────────────────────────
+
+export function RegionsCard() {
+  const [loading, setL] = useState(false);
+  const [res, setRes]   = useState<{ json: unknown; ms: number } | null>(null);
+  const [err, setErr]   = useState<unknown>(null);
+  const { phase: wakePhase, wakeMs, onStart, onDone, onError } = useWakeBanner();
+
+  async function run() {
+    setL(true); setErr(null); setRes(null);
+    onStart();
+    try {
+      const result = await fetchTimed("/api/regions");
+      setRes(result);
+      onDone(result.ms);
+    } catch (e) { setErr(e); onError(); } finally { setL(false); }
+  }
+
+  const rows = Array.isArray(res?.json) ? res!.json as Array<Record<string, unknown>>
+    : Array.isArray((res?.json as Record<string,unknown>)?.data)
+    ? (res!.json as Record<string,unknown>).data as Array<Record<string, unknown>>
+    : [];
+
+  return (
+    <Card path="/api/regions" subtitle="All regions — static lookup list">
+      <div className="flex justify-end pt-4 mb-4">
+        <RunBtn onClick={run} loading={loading} />
+      </div>
+      {loading && wakePhase === "idle" && <Loading />}
+      {wakePhase === "waking" && <WakingBanner wakeMs={wakeMs} />}
+      {wakePhase === "ready" && <ReadyBanner />}
+      {!!err && <ErrMsg err={err} />}
+      {res && <>
+        <MetaBar ms={res.ms} label={`${rows.length} region${rows.length !== 1 ? "s" : ""} returned`} />
+        {rows.length > 0 && (
+          <div className="overflow-x-auto rounded-xl" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr>
+                  {Object.keys(rows[0]).map(k => <TH key={k}>{k}</TH>)}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, i) => (
+                  <tr key={i}>
+                    {Object.values(row).map((v, j) => <TD key={j}>{String(v ?? "")}</TD>)}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <RawJson data={res.json} />
+      </>}
     </Card>
   );
 }
